@@ -16,9 +16,9 @@ class MessageAnimation {
     this.animationFrame = 0;
     this.maxFrames = 60;
     this.active = true;
-    this.jitterAmount = 1; // Reduced jitter for better readability
+    this.jitterAmount = 2; // Increased for more noticeable movement
     this.lastUpdate = 0;
-    this.updateInterval = 50; // Update every 50ms
+    this.updateInterval = 16; // Faster updates (60fps)
     this.textSpans = [];
   }
 
@@ -58,7 +58,7 @@ class MessageAnimation {
     }
     this.lastUpdate = now;
 
-    // Update each character's position independently with subtle jitter
+    // Update each character's position with more pronounced movement
     this.textSpans.forEach(span => {
       const offsetX = (Math.random() - 0.5) * this.jitterAmount;
       const offsetY = (Math.random() - 0.5) * this.jitterAmount;
@@ -70,49 +70,28 @@ class MessageAnimation {
       // Skip if the span hasn't been properly rendered yet
       if (rect.width === 0 || rect.height === 0) return;
       
-      // Add padding around the character to ensure we capture the full letter
-      const padding = 2;
-      const noiseRegion = {
-        x: Math.max(0, Math.floor(rect.x - padding)),
-        y: Math.max(0, Math.floor(rect.y - padding)),
-        width: Math.min(canvas.width - Math.floor(rect.x - padding), Math.ceil(rect.width + padding * 2)),
-        height: Math.min(canvas.height - Math.floor(rect.y - padding), Math.ceil(rect.height + padding * 2))
-      };
+      const padding = 1;
+      const x = Math.max(0, Math.floor(rect.x - padding));
+      const y = Math.max(0, Math.floor(rect.y - padding));
+      const width = Math.min(canvas.width - x, Math.ceil(rect.width + padding * 2));
+      const height = Math.min(canvas.height - y, Math.ceil(rect.height + padding * 2));
 
-      // Verify the region is valid before proceeding
-      if (noiseRegion.width > 0 && noiseRegion.height > 0) {
-        try {
-          // Apply noise effect to the character region
-          const imageData = ctx.getImageData(
-            noiseRegion.x,
-            noiseRegion.y,
-            noiseRegion.width,
-            noiseRegion.height
-          );
-
-          const data = imageData.data;
-          for (let i = 0; i < data.length; i += 4) {
-            const pixel = getRandomPixel();
-            data[i] = pixel[0];     // R
-            data[i + 1] = pixel[1]; // G
-            data[i + 2] = pixel[2]; // B
-            data[i + 3] = 255;      // A
-          }
-
-          ctx.putImageData(imageData, noiseRegion.x, noiseRegion.y);
-        } catch (error) {
-          console.warn('Skipping invalid region:', error);
+      // Only proceed if we have valid dimensions
+      if (width > 0 && height > 0) {
+        const imageData = ctx.getImageData(x, y, width, height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const pixel = getRandomPixel();
+          data[i] = pixel[0];
+          data[i + 1] = pixel[1];
+          data[i + 2] = pixel[2];
+          data[i + 3] = 255;
         }
+        ctx.putImageData(imageData, x, y);
       }
     });
 
-    this.animationFrame++;
-    if (this.animationFrame >= this.maxFrames) {
-      this.active = false;
-      return false;
-    }
-    
-    return true;
+    return true; // Keep animation running indefinitely
   }
 }
 
@@ -211,12 +190,8 @@ function generateNoise(region = null) {
 
 // Animation loop
 function animate() {
-  // Clear the entire canvas with noise before updating animations
-  generateNoise();
-  
-  // Update active animations
+  // Update active animations without regenerating background
   activeAnimations = activeAnimations.filter(animation => animation.update());
-  
   requestAnimationFrame(animate);
 }
 
@@ -225,17 +200,18 @@ toggleMenuButton.addEventListener('click', () => {
   controlsPanel.classList.toggle('hidden');
 });
 
+// Click anywhere to focus input
+document.addEventListener('click', (e) => {
+  // Don't focus if clicking on a button or input
+  if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+    input.focus();
+  }
+});
+
+// Generate initial background noise once
+generateNoise();
+
 // Start animation loop
 animate();
 
-// Initial noise generation
-generateNoise();
-
-// Add some welcome messages
-setTimeout(() => {
-  addMessage('Welcome to the Noisy Chat Room!', 'System');
-}, 500);
-
-setTimeout(() => {
-  addMessage('Try sending a message to see the noise effect!', 'System');
-}, 1500);
+addMessage('Click anywhere to chat!', 'System');
