@@ -50,44 +50,61 @@ class MessageAnimation {
   update() {
     if (!this.active) return false;
 
-    // Update each character's position independently
+    // Update each character's position independently with subtle jitter
     this.textSpans.forEach(span => {
       const offsetX = (Math.random() - 0.5) * this.jitterAmount;
       const offsetY = (Math.random() - 0.5) * this.jitterAmount;
       span.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-    });
 
-    // Get all character spans
-    const spans = this.element.querySelectorAll('.text-content span');
-    
-    spans.forEach(span => {
+      // Get the exact position and dimensions of this single character
       const rect = span.getBoundingClientRect();
       
-      // Apply noise to each character
+      // Skip if the span hasn't been properly rendered yet
+      if (rect.width === 0 || rect.height === 0) return;
+      
+      // Add minimal padding around the character
+      const padding = 1;
       const noiseRegion = {
-        x: Math.floor(rect.x),
-        y: Math.floor(rect.y),
-        width: Math.ceil(rect.width),
-        height: Math.ceil(rect.height)
+        x: Math.floor(rect.x - padding),
+        y: Math.floor(rect.y - padding),
+        width: Math.ceil(rect.width + padding * 2),
+        height: Math.ceil(rect.height + padding * 2)
       };
 
-      const imageData = ctx.getImageData(
-        noiseRegion.x,
-        noiseRegion.y,
-        noiseRegion.width,
-        noiseRegion.height
-      );
-
-      const data = imageData.data;
-      for (let i = 0; i < data.length; i += 4) {
-        const pixel = getRandomPixel();
-        data[i] = pixel[0];     // R
-        data[i + 1] = pixel[1]; // G
-        data[i + 2] = pixel[2]; // B
-        data[i + 3] = pixel[3]; // A
+      // Ensure we're within canvas bounds
+      if (noiseRegion.x < 0) noiseRegion.x = 0;
+      if (noiseRegion.y < 0) noiseRegion.y = 0;
+      if (noiseRegion.x + noiseRegion.width > canvas.width) {
+        noiseRegion.width = canvas.width - noiseRegion.x;
+      }
+      if (noiseRegion.y + noiseRegion.height > canvas.height) {
+        noiseRegion.height = canvas.height - noiseRegion.y;
       }
 
-      ctx.putImageData(imageData, noiseRegion.x, noiseRegion.y);
+      // Skip if we end up with invalid dimensions
+      if (noiseRegion.width <= 0 || noiseRegion.height <= 0) return;
+
+      try {
+        const imageData = ctx.getImageData(
+          noiseRegion.x,
+          noiseRegion.y,
+          noiseRegion.width,
+          noiseRegion.height
+        );
+
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const pixel = getRandomPixel();
+          data[i] = pixel[0];     // R
+          data[i + 1] = pixel[1]; // G
+          data[i + 2] = pixel[2]; // B
+          data[i + 3] = pixel[3]; // A
+        }
+
+        ctx.putImageData(imageData, noiseRegion.x, noiseRegion.y);
+      } catch (error) {
+        console.warn('Skipping invalid region:', error);
+      }
     });
 
     this.animationFrame++;
