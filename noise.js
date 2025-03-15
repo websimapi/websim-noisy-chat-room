@@ -16,11 +16,16 @@ class MessageAnimation {
     this.animationFrame = 0;
     this.maxFrames = 60;
     this.active = true;
+    this.originalPosition = { x: 0, y: 0 };
+    this.moveSpeed = 0.5;
+    this.moveRange = 5;
+    this.moveOffset = { x: 0, y: 0 };
   }
 
   createMessageElement() {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${this.isOwn ? 'own' : ''}`;
+    messageDiv.style.position = 'relative';
     
     const usernameDiv = document.createElement('div');
     usernameDiv.className = 'username';
@@ -37,6 +42,7 @@ class MessageAnimation {
 
   calculateNoiseRegion() {
     const rect = this.element.getBoundingClientRect();
+    this.originalPosition = { x: rect.x, y: rect.y };
     this.noiseRegion = {
       x: Math.floor(rect.x),
       y: Math.floor(rect.y),
@@ -48,13 +54,27 @@ class MessageAnimation {
   update() {
     if (!this.active) return false;
     
+    // Update position with subtle movement
+    this.moveOffset.x = Math.sin(Date.now() * 0.001) * this.moveRange;
+    this.moveOffset.y = Math.cos(Date.now() * 0.001) * this.moveRange;
+    
+    this.element.style.transform = `translate(${this.moveOffset.x}px, ${this.moveOffset.y}px)`;
+    
+    // Update noise region based on new position
+    this.noiseRegion = {
+      x: Math.floor(this.originalPosition.x + this.moveOffset.x),
+      y: Math.floor(this.originalPosition.y + this.moveOffset.y),
+      width: Math.ceil(this.element.offsetWidth),
+      height: Math.ceil(this.element.offsetHeight)
+    };
+    
+    generateNoise(this.noiseRegion);
     this.animationFrame++;
     if (this.animationFrame >= this.maxFrames) {
       this.active = false;
       return false;
     }
     
-    generateNoise(this.noiseRegion);
     return true;
   }
 }
