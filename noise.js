@@ -16,7 +16,9 @@ class MessageAnimation {
     this.animationFrame = 0;
     this.maxFrames = 60;
     this.active = true;
-    this.jitterAmount = 2;
+    this.jitterAmount = 1; // Reduced jitter for better readability
+    this.lastUpdate = 0;
+    this.updateInterval = 50; // Update every 50ms
     this.textSpans = [];
   }
 
@@ -50,60 +52,57 @@ class MessageAnimation {
   update() {
     if (!this.active) return false;
 
+    const now = Date.now();
+    if (now - this.lastUpdate < this.updateInterval) {
+      return true;
+    }
+    this.lastUpdate = now;
+
     // Update each character's position independently with subtle jitter
     this.textSpans.forEach(span => {
       const offsetX = (Math.random() - 0.5) * this.jitterAmount;
       const offsetY = (Math.random() - 0.5) * this.jitterAmount;
       span.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
 
-      // Get the exact position and dimensions of this single character
+      // Get the position after the transform is applied
       const rect = span.getBoundingClientRect();
       
       // Skip if the span hasn't been properly rendered yet
       if (rect.width === 0 || rect.height === 0) return;
       
-      // Add minimal padding around the character
-      const padding = 1;
+      // Add padding around the character to ensure we capture the full letter
+      const padding = 2;
       const noiseRegion = {
-        x: Math.floor(rect.x - padding),
-        y: Math.floor(rect.y - padding),
-        width: Math.ceil(rect.width + padding * 2),
-        height: Math.ceil(rect.height + padding * 2)
+        x: Math.max(0, Math.floor(rect.x - padding)),
+        y: Math.max(0, Math.floor(rect.y - padding)),
+        width: Math.min(canvas.width - Math.floor(rect.x - padding), Math.ceil(rect.width + padding * 2)),
+        height: Math.min(canvas.height - Math.floor(rect.y - padding), Math.ceil(rect.height + padding * 2))
       };
 
-      // Ensure we're within canvas bounds
-      if (noiseRegion.x < 0) noiseRegion.x = 0;
-      if (noiseRegion.y < 0) noiseRegion.y = 0;
-      if (noiseRegion.x + noiseRegion.width > canvas.width) {
-        noiseRegion.width = canvas.width - noiseRegion.x;
-      }
-      if (noiseRegion.y + noiseRegion.height > canvas.height) {
-        noiseRegion.height = canvas.height - noiseRegion.y;
-      }
+      // Verify the region is valid before proceeding
+      if (noiseRegion.width > 0 && noiseRegion.height > 0) {
+        try {
+          // Apply noise effect to the character region
+          const imageData = ctx.getImageData(
+            noiseRegion.x,
+            noiseRegion.y,
+            noiseRegion.width,
+            noiseRegion.height
+          );
 
-      // Skip if we end up with invalid dimensions
-      if (noiseRegion.width <= 0 || noiseRegion.height <= 0) return;
+          const data = imageData.data;
+          for (let i = 0; i < data.length; i += 4) {
+            const pixel = getRandomPixel();
+            data[i] = pixel[0];     // R
+            data[i + 1] = pixel[1]; // G
+            data[i + 2] = pixel[2]; // B
+            data[i + 3] = 255;      // A
+          }
 
-      try {
-        const imageData = ctx.getImageData(
-          noiseRegion.x,
-          noiseRegion.y,
-          noiseRegion.width,
-          noiseRegion.height
-        );
-
-        const data = imageData.data;
-        for (let i = 0; i < data.length; i += 4) {
-          const pixel = getRandomPixel();
-          data[i] = pixel[0];     // R
-          data[i + 1] = pixel[1]; // G
-          data[i + 2] = pixel[2]; // B
-          data[i + 3] = pixel[3]; // A
+          ctx.putImageData(imageData, noiseRegion.x, noiseRegion.y);
+        } catch (error) {
+          console.warn('Skipping invalid region:', error);
         }
-
-        ctx.putImageData(imageData, noiseRegion.x, noiseRegion.y);
-      } catch (error) {
-        console.warn('Skipping invalid region:', error);
       }
     });
 
@@ -212,7 +211,12 @@ function generateNoise(region = null) {
 
 // Animation loop
 function animate() {
+  // Clear the entire canvas with noise before updating animations
+  generateNoise();
+  
+  // Update active animations
   activeAnimations = activeAnimations.filter(animation => animation.update());
+  
   requestAnimationFrame(animate);
 }
 
