@@ -20,6 +20,7 @@ class MessageAnimation {
     this.moveRange = 5;
     this.moveOffset = { x: 0, y: 0 };
     this.lastUpdateTime = Date.now();
+    this.characterSpans = [];
   }
 
   createMessageElement() {
@@ -29,12 +30,30 @@ class MessageAnimation {
     
     const usernameDiv = document.createElement('div');
     usernameDiv.className = 'username';
-    usernameDiv.textContent = this.username;
-    usernameDiv.style.color = 'transparent';
+    
+    // Convert username to spans for character-level noise
+    for (let i = 0; i < this.username.length; i++) {
+      const span = document.createElement('span');
+      span.textContent = this.username[i];
+      span.style.color = 'transparent';
+      span.style.position = 'relative';
+      span.style.display = 'inline-block';
+      this.characterSpans.push(span);
+      usernameDiv.appendChild(span);
+    }
     
     const textDiv = document.createElement('div');
-    textDiv.textContent = this.text;
-    textDiv.style.color = 'transparent';
+    
+    // Convert message text to spans for character-level noise
+    for (let i = 0; i < this.text.length; i++) {
+      const span = document.createElement('span');
+      span.textContent = this.text[i];
+      span.style.color = 'transparent';
+      span.style.position = 'relative';
+      span.style.display = 'inline-block';
+      this.characterSpans.push(span);
+      textDiv.appendChild(span);
+    }
     
     messageDiv.appendChild(usernameDiv);
     messageDiv.appendChild(textDiv);
@@ -51,17 +70,12 @@ class MessageAnimation {
     
     this.element.style.transform = `translate(${this.moveOffset.x}px, ${this.moveOffset.y}px)`;
     
-    // Find and update text nodes only
+    // Reset noise regions
     this.noiseRegions = [];
-    const textElements = [
-      this.element.querySelector('.username'),
-      ...this.element.querySelectorAll('div:not(.username)')
-    ];
     
-    textElements.forEach(element => {
-      if (!element) return;
-      
-      const rect = element.getBoundingClientRect();
+    // Apply noise to each character individually
+    this.characterSpans.forEach(span => {
+      const rect = span.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) return;
       
       const region = {
@@ -73,7 +87,7 @@ class MessageAnimation {
       
       this.noiseRegions.push(region);
       
-      // Generate noise only for text regions
+      // Get text pixel data
       const imageData = ctx.getImageData(
         region.x,
         region.y,
@@ -83,6 +97,8 @@ class MessageAnimation {
       
       const data = imageData.data;
       for (let i = 0; i < data.length; i += 4) {
+        // Only modify pixels that would be part of the text
+        // Random noise
         const pixel = getRandomPixel();
         data[i] = pixel[0];     // R
         data[i + 1] = pixel[1]; // G
