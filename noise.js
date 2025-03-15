@@ -37,18 +37,18 @@ class MessageAnimation {
     messageDiv.appendChild(usernameDiv);
     messageDiv.appendChild(textDiv);
     
+    // Make the text itself use the noise pattern
+    const textNodes = messageDiv.getElementsByTagName('*');
+    for (let node of textNodes) {
+      if (node.textContent) {
+        const textWidth = node.offsetWidth;
+        const textHeight = node.offsetHeight;
+        node.style.color = 'transparent';
+        node.style.textShadow = 'none';
+      }
+    }
+    
     return messageDiv;
-  }
-
-  calculateNoiseRegion() {
-    const rect = this.element.getBoundingClientRect();
-    this.originalPosition = { x: rect.x, y: rect.y };
-    this.noiseRegion = {
-      x: Math.floor(rect.x),
-      y: Math.floor(rect.y),
-      width: Math.ceil(rect.width),
-      height: Math.ceil(rect.height)
-    };
   }
 
   update() {
@@ -60,15 +60,34 @@ class MessageAnimation {
     
     this.element.style.transform = `translate(${this.moveOffset.x}px, ${this.moveOffset.y}px)`;
     
-    // Update noise region based on new position
+    // Update noise region based on new position and text content
+    const rect = this.element.getBoundingClientRect();
     this.noiseRegion = {
-      x: Math.floor(this.originalPosition.x + this.moveOffset.x),
-      y: Math.floor(this.originalPosition.y + this.moveOffset.y),
-      width: Math.ceil(this.element.offsetWidth),
-      height: Math.ceil(this.element.offsetHeight)
+      x: Math.floor(rect.x),
+      y: Math.floor(rect.y),
+      width: Math.ceil(rect.width),
+      height: Math.ceil(rect.height)
     };
     
-    generateNoise(this.noiseRegion);
+    // Generate noise for the entire message region
+    const imageData = ctx.getImageData(
+      this.noiseRegion.x,
+      this.noiseRegion.y,
+      this.noiseRegion.width,
+      this.noiseRegion.height
+    );
+    
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const pixel = getRandomPixel();
+      data[i] = pixel[0];     // R
+      data[i + 1] = pixel[1]; // G
+      data[i + 2] = pixel[2]; // B
+      data[i + 3] = pixel[3]; // A
+    }
+    
+    ctx.putImageData(imageData, this.noiseRegion.x, this.noiseRegion.y);
+    
     this.animationFrame++;
     if (this.animationFrame >= this.maxFrames) {
       this.active = false;
@@ -112,6 +131,16 @@ function addMessage(text, username, isOwn = false) {
   
   // Wait for next frame to calculate position after DOM update
   requestAnimationFrame(() => {
+    animation.calculateNoiseRegion = function() {
+      const rect = this.element.getBoundingClientRect();
+      this.originalPosition = { x: rect.x, y: rect.y };
+      this.noiseRegion = {
+        x: Math.floor(rect.x),
+        y: Math.floor(rect.y),
+        width: Math.ceil(rect.width),
+        height: Math.ceil(rect.height)
+      };
+    };
     animation.calculateNoiseRegion();
     activeAnimations.push(animation);
   });
@@ -149,7 +178,7 @@ window.addEventListener('resize', resizeCanvas);
 // Generate random noise for a pixel
 function getRandomPixel() {
   const value = Math.random() > 0.5 ? 255 : 0;
-  return [value, value, value, 255]; // RGBA
+  return [value, value, value, 255];
 }
 
 // Fill canvas with random noise
