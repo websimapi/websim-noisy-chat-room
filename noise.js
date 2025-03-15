@@ -11,7 +11,8 @@ class MessageAnimation {
     this.text = text;
     this.username = username || 'Anonymous'; 
     this.isOwn = isOwn;
-    this.characterSpans = []; 
+    this.characterSpans = [];
+    this.usernameSpans = [];
     this.element = this.createMessageElement();
     this.noiseRegions = [];
     this.animationFrame = 0;
@@ -21,6 +22,7 @@ class MessageAnimation {
     this.moveRange = 5;
     this.moveOffset = { x: 0, y: 0 };
     this.lastUpdateTime = Date.now();
+    this.pixelCache = {}; // Cache for letter pixels
   }
 
   createMessageElement() {
@@ -38,7 +40,7 @@ class MessageAnimation {
       span.style.color = 'transparent';
       span.style.position = 'relative';
       span.style.display = 'inline-block';
-      this.characterSpans.push(span);
+      this.usernameSpans.push(span);
       usernameDiv.appendChild(span);
     }
     
@@ -61,6 +63,48 @@ class MessageAnimation {
     return messageDiv;
   }
 
+  getLetterPixels(span) {
+    const rect = span.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return null;
+    
+    // Create a hidden canvas to render the letter
+    const letterCanvas = document.createElement('canvas');
+    letterCanvas.width = rect.width;
+    letterCanvas.height = rect.height;
+    const letterCtx = letterCanvas.getContext('2d');
+    
+    // Clear and set black background
+    letterCtx.fillStyle = 'black';
+    letterCtx.fillRect(0, 0, rect.width, rect.height);
+    
+    // Draw white text
+    letterCtx.fillStyle = 'white';
+    letterCtx.font = window.getComputedStyle(span).font;
+    letterCtx.textBaseline = 'top';
+    letterCtx.fillText(span.textContent, 0, 0);
+    
+    // Get image data
+    const letterData = letterCtx.getImageData(0, 0, rect.width, rect.height);
+    const data = letterData.data;
+    
+    // Find the actual pixels that make up the letter (white pixels)
+    const letterPixels = [];
+    for (let y = 0; y < rect.height; y++) {
+      for (let x = 0; x < rect.width; x++) {
+        const idx = (y * rect.width + x) * 4;
+        // If pixel is not black (part of the letter)
+        if (data[idx] > 10) {
+          letterPixels.push({
+            x: Math.floor(rect.x + x),
+            y: Math.floor(rect.y + y)
+          });
+        }
+      }
+    }
+    
+    return letterPixels;
+  }
+
   update() {
     if (!this.active) return false;
     
@@ -70,47 +114,49 @@ class MessageAnimation {
     
     this.element.style.transform = `translate(${this.moveOffset.x}px, ${this.moveOffset.y}px)`;
     
-    // Reset noise regions
-    this.noiseRegions = [];
+    // Apply noise to each username character
+    this.usernameSpans.forEach(span => {
+      this.processCharacterSpan(span);
+    });
     
-    // Apply noise to each character individually
+    // Apply noise to each message character
     this.characterSpans.forEach(span => {
-      const rect = span.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) return;
-      
-      const region = {
-        x: Math.floor(rect.x),
-        y: Math.floor(rect.y),
-        width: Math.ceil(rect.width),
-        height: Math.ceil(rect.height)
-      };
-      
-      this.noiseRegions.push(region);
-      
-      // Get text pixel data
-      const imageData = ctx.getImageData(
-        region.x,
-        region.y,
-        region.width,
-        region.height
-      );
-      
-      const data = imageData.data;
-      for (let i = 0; i < data.length; i += 4) {
-        // Only modify pixels that would be part of the text
-        // Random noise
-        const pixel = getRandomPixel();
-        data[i] = pixel[0];     // R
-        data[i + 1] = pixel[1]; // G
-        data[i + 2] = pixel[2]; // B
-        data[i + 3] = pixel[3]; // A
-      }
-      
-      ctx.putImageData(imageData, region.x, region.y);
+      this.processCharacterSpan(span);
     });
     
     // Always keep messages active to continuously update noise
     return true;
+  }
+  
+  processCharacterSpan(span) {
+    const key = span.textContent + span.getBoundingClientRect().toString();
+    let letterPixels;
+    
+    // Check if we have these letter pixels cached
+    if (this.pixelCache[key]) {
+      letterPixels = this.pixelCache[key];
+    } else {
+      letterPixels = this.getLetterPixels(span);
+      if (letterPixels) {
+        this.pixelCache[key] = letterPixels;
+      }
+    }
+    
+    if (!letterPixels || letterPixels.length === 0) return;
+    
+    // Apply noise to each pixel of the letter
+    letterPixels.forEach(pixel => {
+      const imageData = ctx.getImageData(pixel.x, pixel.y, 1, 1);
+      const data = imageData.data;
+      
+      const noisyPixel = getRandomPixel();
+      data[0] = noisyPixel[0];
+      data[1] = noisyPixel[1];
+      data[2] = noisyPixel[2];
+      data[3] = noisyPixel[3];
+      
+      ctx.putImageData(imageData, pixel.x, pixel.y);
+    });
   }
 }
 
