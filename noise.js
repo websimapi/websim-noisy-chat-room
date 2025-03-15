@@ -183,19 +183,27 @@ function getRandomPixel() {
 
 // Fill canvas with random noise
 function generateNoise(region = null) {
-  // Clear the region first
-  ctx.clearRect(
+  const imageData = ctx.getImageData(
     region ? region.x : 0,
     region ? region.y : 0,
     region ? region.width : canvas.width,
     region ? region.height : canvas.height
   );
+  const data = imageData.data;
+  
+  for (let i = 0; i < data.length; i += 4) {
+    const pixel = getRandomPixel();
+    data[i] = pixel[0];     // R
+    data[i + 1] = pixel[1]; // G
+    data[i + 2] = pixel[2]; // B
+    data[i + 3] = pixel[3]; // A
+  }
+  
+  ctx.putImageData(imageData, region ? region.x : 0, region ? region.y : 0);
 }
 
 // Animation loop
 function animate() {
-  // Clear the entire canvas each frame
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
   activeAnimations = activeAnimations.filter(animation => animation.update());
   requestAnimationFrame(animate);
 }
