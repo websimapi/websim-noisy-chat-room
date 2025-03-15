@@ -202,8 +202,11 @@ toggleMenuButton.addEventListener('click', () => {
 
 // Click anywhere to focus input
 document.addEventListener('click', (e) => {
-  // Don't focus if clicking on a button or input
-  if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+  // Don't focus if clicking on a button, input, or within chat messages
+  if (e.target.tagName !== 'BUTTON' && 
+      e.target.tagName !== 'INPUT' && 
+      !e.target.closest('.chat-messages') &&
+      !e.target.closest('.controls')) {
     input.focus();
   }
 });
