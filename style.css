@@ -21,7 +21,7 @@ body {
   display: flex;
   gap: 10px;
   align-items: center;
-  background: rgba(0, 0, 0, 0.7);
+  pointer-events: all;
   padding: 10px;
   border-radius: 4px;
   transition: transform 0.3s ease;
@@ -43,7 +43,6 @@ body {
   padding: 10px;
   font-size: 20px;
   cursor: pointer;
-  background: white;
   border: none;
   border-radius: 4px;
   width: 40px;
@@ -51,105 +50,34 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-#toggleMenu:hover {
-  background: #eee;
-}
-
-.controls button {
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
-  background: white;
-  border: none;
-  border-radius: 4px;
-}
-
-.controls button:hover {
-  background: #eee;
-}
-
-.cropping #noiseCanvas {
-  cursor: crosshair;
+  background: transparent;
+  color: white;
 }
 
 .slider-container {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: white;
   padding: 5px 10px;
   border-radius: 4px;
+  pointer-events: all;
+  background: transparent;
 }
 
 .slider-container label {
-  color: black;
+  color: white;
   font-size: 14px;
 }
 
 #sensitivity {
   width: 100px;
+  background: transparent;
 }
 
 #sensitivityValue {
-  color: black;
+  color: white;
   font-size: 14px;
   min-width: 45px;
-}
-
-.ascii-settings {
-  display: none;
-}
-
-.ascii-settings.show {
-  display: flex;
-}
-
-.color-picker-container {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: white;
-  padding: 5px 10px;
-  border-radius: 4px;
-}
-
-.color-picker-container label {
-  color: black;
-  font-size: 14px;
-}
-
-.color-picker-container button {
-  padding: 5px 10px;
-  font-size: 14px;
-}
-
-#asciiColor {
-  width: 50px;
-  height: 30px;
-  padding: 0;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-#toggleRegionMode {
-  background: white;
-  color: black;
-}
-
-#toggleRegionMode:hover {
-  background: #eee;
-}
-
-#toggleAscii {
-  background: white;
-  color: black;
-}
-
-#toggleAscii:hover {
-  background: #eee;
 }
 
 .chat-container {
@@ -157,13 +85,13 @@ body {
   bottom: 20px;
   left: 20px;
   right: 20px;
-  background: rgba(0, 0, 0, 0.7);
   padding: 20px;
   border-radius: 8px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   z-index: 100;
+  pointer-events: all;
 }
 
 .chat-messages {
@@ -184,36 +112,34 @@ body {
   padding: 10px;
   border: none;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.9);
+  background: transparent;
+  color: white;
+  border: 1px solid white;
 }
 
 .chat-input button {
   padding: 10px 20px;
-  background: white;
-  color: black;
-  border: none;
+  background: transparent;
+  color: white;
+  border: 1px solid white;
   border-radius: 4px;
   cursor: pointer;
-}
-
-.chat-input button:hover {
-  background: #eee;
 }
 
 .message {
   position: relative;
   padding: 10px;
-  background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   color: white;
   max-width: 80%;
   align-self: flex-start;
   word-break: break-word;
+  border: 1px solid white;
+  background: transparent;
 }
 
 .message.own {
   align-self: flex-end;
-  background: rgba(255, 255, 255, 0.2);
 }
 
 .username {
@@ -221,3 +147,8 @@ body {
   margin-bottom: 5px;
   color: white;
 }
+
+::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
