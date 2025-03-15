@@ -12,36 +12,29 @@ class MessageAnimation {
     this.username = username;
     this.isOwn = isOwn;
     this.element = this.createMessageElement();
-    this.noiseRegion = null;
+    this.noiseRegions = [];
     this.animationFrame = 0;
     this.maxFrames = 60;
     this.active = true;
-    this.jitterAmount = 2; // Increased for more noticeable movement
-    this.lastUpdate = 0;
-    this.updateInterval = 16; // Faster updates (60fps)
-    this.textSpans = [];
+    this.moveSpeed = 0.5;
+    this.moveRange = 5;
+    this.moveOffset = { x: 0, y: 0 };
+    this.lastUpdateTime = Date.now();
   }
 
   createMessageElement() {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${this.isOwn ? 'own' : ''}`;
+    messageDiv.style.position = 'relative';
     
     const usernameDiv = document.createElement('div');
     usernameDiv.className = 'username';
     usernameDiv.textContent = this.username;
+    usernameDiv.style.color = 'transparent';
     
     const textDiv = document.createElement('div');
-    textDiv.className = 'text-content';
-    
-    this.textSpans = this.text.split('').map(char => {
-      const span = document.createElement('span');
-      span.textContent = char;
-      span.style.position = 'relative';
-      span.style.display = 'inline-block';
-      return span;
-    });
-    
-    this.textSpans.forEach(span => textDiv.appendChild(span));
+    textDiv.textContent = this.text;
+    textDiv.style.color = 'transparent';
     
     messageDiv.appendChild(usernameDiv);
     messageDiv.appendChild(textDiv);
@@ -51,47 +44,57 @@ class MessageAnimation {
 
   update() {
     if (!this.active) return false;
-
-    const now = Date.now();
-    if (now - this.lastUpdate < this.updateInterval) {
-      return true;
-    }
-    this.lastUpdate = now;
-
-    // Update each character's position with more pronounced movement
-    this.textSpans.forEach(span => {
-      const offsetX = (Math.random() - 0.5) * this.jitterAmount;
-      const offsetY = (Math.random() - 0.5) * this.jitterAmount;
-      span.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-
-      // Get the position after the transform is applied
-      const rect = span.getBoundingClientRect();
+    
+    // Update position with subtle movement
+    this.moveOffset.x = Math.sin(Date.now() * 0.001) * this.moveRange;
+    this.moveOffset.y = Math.cos(Date.now() * 0.0015) * this.moveRange;
+    
+    this.element.style.transform = `translate(${this.moveOffset.x}px, ${this.moveOffset.y}px)`;
+    
+    // Find and update text nodes only
+    this.noiseRegions = [];
+    const textElements = [
+      this.element.querySelector('.username'),
+      ...this.element.querySelectorAll('div:not(.username)')
+    ];
+    
+    textElements.forEach(element => {
+      if (!element) return;
       
-      // Skip if the span hasn't been properly rendered yet
+      const rect = element.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) return;
       
-      const padding = 1;
-      const x = Math.max(0, Math.floor(rect.x - padding));
-      const y = Math.max(0, Math.floor(rect.y - padding));
-      const width = Math.min(canvas.width - x, Math.ceil(rect.width + padding * 2));
-      const height = Math.min(canvas.height - y, Math.ceil(rect.height + padding * 2));
-
-      // Only proceed if we have valid dimensions
-      if (width > 0 && height > 0) {
-        const imageData = ctx.getImageData(x, y, width, height);
-        const data = imageData.data;
-        for (let i = 0; i < data.length; i += 4) {
-          const pixel = getRandomPixel();
-          data[i] = pixel[0];
-          data[i + 1] = pixel[1];
-          data[i + 2] = pixel[2];
-          data[i + 3] = 255;
-        }
-        ctx.putImageData(imageData, x, y);
+      const region = {
+        x: Math.floor(rect.x),
+        y: Math.floor(rect.y),
+        width: Math.ceil(rect.width),
+        height: Math.ceil(rect.height)
+      };
+      
+      this.noiseRegions.push(region);
+      
+      // Generate noise only for text regions
+      const imageData = ctx.getImageData(
+        region.x,
+        region.y,
+        region.width,
+        region.height
+      );
+      
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const pixel = getRandomPixel();
+        data[i] = pixel[0];     // R
+        data[i + 1] = pixel[1]; // G
+        data[i + 2] = pixel[2]; // B
+        data[i + 3] = pixel[3]; // A
       }
+      
+      ctx.putImageData(imageData, region.x, region.y);
     });
-
-    return true; // Keep animation running indefinitely
+    
+    // Always keep messages active to continuously update noise
+    return true;
   }
 }
 
@@ -188,10 +191,10 @@ function generateNoise(region = null) {
   ctx.putImageData(imageData, region ? region.x : 0, region ? region.y : 0);
 }
 
-// Animation loop
+// Animation loop with time-based updates
 function animate() {
-  // Update active animations without regenerating background
-  activeAnimations = activeAnimations.filter(animation => animation.update());
+  // Don't filter out animations, keep them all active
+  activeAnimations.forEach(animation => animation.update());
   requestAnimationFrame(animate);
 }
 
@@ -200,21 +203,17 @@ toggleMenuButton.addEventListener('click', () => {
   controlsPanel.classList.toggle('hidden');
 });
 
-// Click anywhere to focus input
-document.addEventListener('click', (e) => {
-  // Don't focus if clicking on a button, input, or within chat messages
-  if (e.target.tagName !== 'BUTTON' && 
-      e.target.tagName !== 'INPUT' && 
-      !e.target.closest('.chat-messages') &&
-      !e.target.closest('.controls')) {
-    input.focus();
-  }
-});
-
-// Generate initial background noise once
-generateNoise();
-
 // Start animation loop
 animate();
 
-addMessage('Click anywhere to chat!', 'System');
+// Initial noise generation
+generateNoise();
+
+// Add some welcome messages
+setTimeout(() => {
+  addMessage('Welcome to the Noisy Chat Room!', 'System');
+}, 500);
+
+setTimeout(() => {
+  addMessage('Try sending a message to see the noise effect!', 'System');
+}, 1500);
