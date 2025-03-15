@@ -32,21 +32,16 @@ class MessageAnimation {
     usernameDiv.textContent = this.username;
     
     const textDiv = document.createElement('div');
+    textDiv.className = 'text-content';
     textDiv.textContent = this.text;
     
     messageDiv.appendChild(usernameDiv);
     messageDiv.appendChild(textDiv);
     
-    // Make the text itself use the noise pattern
-    const textNodes = messageDiv.getElementsByTagName('*');
-    for (let node of textNodes) {
-      if (node.textContent) {
-        const textWidth = node.offsetWidth;
-        const textHeight = node.offsetHeight;
-        node.style.color = 'transparent';
-        node.style.textShadow = 'none';
-      }
-    }
+    // Apply noise effect only to the text content
+    const textNode = messageDiv.querySelector('.text-content');
+    textNode.style.color = 'transparent';
+    textNode.style.textShadow = 'none';
     
     return messageDiv;
   }
@@ -60,8 +55,11 @@ class MessageAnimation {
     
     this.element.style.transform = `translate(${this.moveOffset.x}px, ${this.moveOffset.y}px)`;
     
-    // Update noise region based on new position and text content
-    const rect = this.element.getBoundingClientRect();
+    // Get the text content element's position
+    const textElement = this.element.querySelector('.text-content');
+    const rect = textElement.getBoundingClientRect();
+    
+    // Update noise region based on only the text content
     this.noiseRegion = {
       x: Math.floor(rect.x),
       y: Math.floor(rect.y),
