@@ -23,6 +23,7 @@ class MessageAnimation {
     this.moveOffset = { x: 0, y: 0 };
     this.lastUpdateTime = Date.now();
     this.pixelCache = {}; // Cache for letter pixels
+    this.lastPositions = {}; // Track last positions to avoid redrawing
   }
 
   createMessageElement() {
@@ -69,15 +70,14 @@ class MessageAnimation {
     
     // Create a hidden canvas to render the letter
     const letterCanvas = document.createElement('canvas');
-    letterCanvas.width = rect.width;
-    letterCanvas.height = rect.height;
+    letterCanvas.width = Math.ceil(rect.width);
+    letterCanvas.height = Math.ceil(rect.height);
     const letterCtx = letterCanvas.getContext('2d');
     
-    // Clear and set black background
-    letterCtx.fillStyle = 'black';
-    letterCtx.fillRect(0, 0, rect.width, rect.height);
+    // Clear and set transparent background
+    letterCtx.clearRect(0, 0, rect.width, rect.height);
     
-    // Draw white text
+    // Draw text
     letterCtx.fillStyle = 'white';
     letterCtx.font = window.getComputedStyle(span).font;
     letterCtx.textBaseline = 'top';
@@ -92,8 +92,8 @@ class MessageAnimation {
     for (let y = 0; y < rect.height; y++) {
       for (let x = 0; x < rect.width; x++) {
         const idx = (y * rect.width + x) * 4;
-        // If pixel is not black (part of the letter)
-        if (data[idx] > 10) {
+        // If pixel has significant alpha (part of the letter)
+        if (data[idx + 3] > 50) {
           letterPixels.push({
             x: Math.floor(rect.x + x),
             y: Math.floor(rect.y + y)
@@ -129,11 +129,18 @@ class MessageAnimation {
   }
   
   processCharacterSpan(span) {
-    const key = span.textContent + span.getBoundingClientRect().toString();
+    const rect = span.getBoundingClientRect();
+    const key = span.textContent + rect.x + rect.y + rect.width + rect.height;
+    
+    // Skip processing if position hasn't changed and we already have cached pixels
+    const positionKey = `${rect.x},${rect.y}`;
+    const hasPositionChanged = this.lastPositions[key] !== positionKey;
+    this.lastPositions[key] = positionKey;
+    
     let letterPixels;
     
     // Check if we have these letter pixels cached
-    if (this.pixelCache[key]) {
+    if (this.pixelCache[key] && !hasPositionChanged) {
       letterPixels = this.pixelCache[key];
     } else {
       letterPixels = this.getLetterPixels(span);
@@ -146,6 +153,8 @@ class MessageAnimation {
     
     // Apply noise to each pixel of the letter
     letterPixels.forEach(pixel => {
+      if (pixel.x < 0 || pixel.y < 0 || pixel.x >= canvas.width || pixel.y >= canvas.height) return;
+      
       const imageData = ctx.getImageData(pixel.x, pixel.y, 1, 1);
       const data = imageData.data;
       

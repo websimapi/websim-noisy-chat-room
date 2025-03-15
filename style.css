@@ -138,7 +138,7 @@ body {
   word-break: break-word;
   border: none;
   background: none;
-  font-size: 24px;
+  font-size: 36px;
 }
 
 .message span {
@@ -155,7 +155,7 @@ body {
 .username {
   font-weight: bold;
   margin-bottom: 5px;
-  font-size: 20px;
+  font-size: 28px;
 }
 
 .username span {
