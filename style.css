@@ -136,8 +136,8 @@ body {
   max-width: 80%;
   align-self: flex-start;
   word-break: break-word;
-  border: 1px solid transparent;
   background: transparent;
+  border: none;
 }
 
 .message.own {
@@ -153,6 +153,11 @@ body {
 .text-content {
   color: transparent;
   padding: 5px 0;
+  letter-spacing: 1px;
+}
+
+.text-content span {
+  transition: transform 0.05s ease;
 }
 
 ::placeholder {

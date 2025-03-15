@@ -16,16 +16,13 @@ class MessageAnimation {
     this.animationFrame = 0;
     this.maxFrames = 60;
     this.active = true;
-    this.originalPosition = { x: 0, y: 0 };
-    this.moveSpeed = 0.5;
-    this.moveRange = 5;
-    this.moveOffset = { x: 0, y: 0 };
+    this.jitterAmount = 2;
+    this.textSpans = [];
   }
 
   createMessageElement() {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${this.isOwn ? 'own' : ''}`;
-    messageDiv.style.position = 'relative';
     
     const usernameDiv = document.createElement('div');
     usernameDiv.className = 'username';
@@ -33,59 +30,66 @@ class MessageAnimation {
     
     const textDiv = document.createElement('div');
     textDiv.className = 'text-content';
-    textDiv.textContent = this.text;
+    
+    this.textSpans = this.text.split('').map(char => {
+      const span = document.createElement('span');
+      span.textContent = char;
+      span.style.position = 'relative';
+      span.style.display = 'inline-block';
+      return span;
+    });
+    
+    this.textSpans.forEach(span => textDiv.appendChild(span));
     
     messageDiv.appendChild(usernameDiv);
     messageDiv.appendChild(textDiv);
-    
-    // Apply noise effect only to the text content
-    const textNode = messageDiv.querySelector('.text-content');
-    textNode.style.color = 'transparent';
-    textNode.style.textShadow = 'none';
     
     return messageDiv;
   }
 
   update() {
     if (!this.active) return false;
+
+    // Update each character's position independently
+    this.textSpans.forEach(span => {
+      const offsetX = (Math.random() - 0.5) * this.jitterAmount;
+      const offsetY = (Math.random() - 0.5) * this.jitterAmount;
+      span.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+    });
+
+    // Get all character spans
+    const spans = this.element.querySelectorAll('.text-content span');
     
-    // Update position with subtle movement
-    this.moveOffset.x = Math.sin(Date.now() * 0.001) * this.moveRange;
-    this.moveOffset.y = Math.cos(Date.now() * 0.001) * this.moveRange;
-    
-    this.element.style.transform = `translate(${this.moveOffset.x}px, ${this.moveOffset.y}px)`;
-    
-    // Get the text content element's position
-    const textElement = this.element.querySelector('.text-content');
-    const rect = textElement.getBoundingClientRect();
-    
-    // Update noise region based on only the text content
-    this.noiseRegion = {
-      x: Math.floor(rect.x),
-      y: Math.floor(rect.y),
-      width: Math.ceil(rect.width),
-      height: Math.ceil(rect.height)
-    };
-    
-    // Generate noise for the entire message region
-    const imageData = ctx.getImageData(
-      this.noiseRegion.x,
-      this.noiseRegion.y,
-      this.noiseRegion.width,
-      this.noiseRegion.height
-    );
-    
-    const data = imageData.data;
-    for (let i = 0; i < data.length; i += 4) {
-      const pixel = getRandomPixel();
-      data[i] = pixel[0];     // R
-      data[i + 1] = pixel[1]; // G
-      data[i + 2] = pixel[2]; // B
-      data[i + 3] = pixel[3]; // A
-    }
-    
-    ctx.putImageData(imageData, this.noiseRegion.x, this.noiseRegion.y);
-    
+    spans.forEach(span => {
+      const rect = span.getBoundingClientRect();
+      
+      // Apply noise to each character
+      const noiseRegion = {
+        x: Math.floor(rect.x),
+        y: Math.floor(rect.y),
+        width: Math.ceil(rect.width),
+        height: Math.ceil(rect.height)
+      };
+
+      const imageData = ctx.getImageData(
+        noiseRegion.x,
+        noiseRegion.y,
+        noiseRegion.width,
+        noiseRegion.height
+      );
+
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const pixel = getRandomPixel();
+        data[i] = pixel[0];     // R
+        data[i + 1] = pixel[1]; // G
+        data[i + 2] = pixel[2]; // B
+        data[i + 3] = pixel[3]; // A
+      }
+
+      ctx.putImageData(imageData, noiseRegion.x, noiseRegion.y);
+    });
+
     this.animationFrame++;
     if (this.animationFrame >= this.maxFrames) {
       this.active = false;
@@ -129,17 +133,6 @@ function addMessage(text, username, isOwn = false) {
   
   // Wait for next frame to calculate position after DOM update
   requestAnimationFrame(() => {
-    animation.calculateNoiseRegion = function() {
-      const rect = this.element.getBoundingClientRect();
-      this.originalPosition = { x: rect.x, y: rect.y };
-      this.noiseRegion = {
-        x: Math.floor(rect.x),
-        y: Math.floor(rect.y),
-        width: Math.ceil(rect.width),
-        height: Math.ceil(rect.height)
-      };
-    };
-    animation.calculateNoiseRegion();
     activeAnimations.push(animation);
   });
 }
