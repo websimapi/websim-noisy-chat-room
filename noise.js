@@ -9,8 +9,9 @@ let previousImageData = null;
 class MessageAnimation {
   constructor(text, username, isOwn = false) {
     this.text = text;
-    this.username = username;
+    this.username = username || 'Anonymous'; 
     this.isOwn = isOwn;
+    this.characterSpans = []; 
     this.element = this.createMessageElement();
     this.noiseRegions = [];
     this.animationFrame = 0;
@@ -20,7 +21,6 @@ class MessageAnimation {
     this.moveRange = 5;
     this.moveOffset = { x: 0, y: 0 };
     this.lastUpdateTime = Date.now();
-    this.characterSpans = [];
   }
 
   createMessageElement() {
